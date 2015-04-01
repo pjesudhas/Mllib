@@ -213,37 +213,45 @@ public class Clustering {
         }
         return gson.toJson(groups);
     }
+    public String getJSONClusterForCase(String caseno)
+    {
+        Clustering obj = new Clustering();
+        String outputFolder = "output/";
+        String docSequence = "sequence";
+        String tfidf = "tfidf";
+        obj.storeDBDataToHDFS(caseno, outputFolder, docSequence);
+        obj.getTfIDFScoreForHDFSData(outputFolder, docSequence, tfidf);
+        KlusterData klust = new KlusterData();
+        klust.featureMap =  obj.getTFIDFScores(new Path(outputFolder + "tfidf/tfidf-vectors/part-r-00000"));
+        klust.wordIndex = obj.wordindex((new Path(outputFolder, "dictionary.file-0")));
+        klust.clusterMap = obj.clusteringmethod(5, klust);
+        klust.labelMap = obj.findClusterLabels(klust);
+
+        try {
+            HadoopUtil.delete(obj.configuration, new Path(outputFolder));
+            HadoopUtil.delete(obj.configuration, new Path("clustering"));
+        }catch(IOException ex)
+        {
+            ex.printStackTrace();
+        }
+        String jsonOut = obj.formClusterJSON(klust);
+        return jsonOut;
+    }
     public static void main(String args[])
     {
         if(args.length == 1)
         {
             String caseno = args[0];
             Clustering obj = new Clustering();
-            String outputFolder = "output/";
-            String docSequence = "sequence";
-            String tfidf = "tfidf";
-            obj.storeDBDataToHDFS(caseno, outputFolder, docSequence);
-            obj.getTfIDFScoreForHDFSData(outputFolder, docSequence, tfidf);
-            KlusterData klust = new KlusterData();
-            klust.featureMap =  obj.getTFIDFScores(new Path(outputFolder + "tfidf/tfidf-vectors/part-r-00000"));
-            klust.wordIndex = obj.wordindex((new Path(outputFolder, "dictionary.file-0")));
-            klust.clusterMap = obj.clusteringmethod(5, klust);
-            klust.labelMap = obj.findClusterLabels(klust);
-
-            try {
-                HadoopUtil.delete(obj.configuration, new Path(outputFolder));
-                HadoopUtil.delete(obj.configuration, new Path("clustering"));
-            }catch(IOException ex)
-            {
-                ex.printStackTrace();
-            }
-            String jsonOut = obj.formClusterJSON(klust);
+            String jsonOut = obj.getJSONClusterForCase(caseno);
             try {
                 FileUtils.writeStringToFile(new File(caseno+"_out.txt"),jsonOut);
             }catch(IOException ex)
             {
                 ex.printStackTrace();
             }
+            DBlookup dbl = new DBlookup();
+            dbl.storeCaseCluster(jsonOut,caseno);
             System.out.println(jsonOut);
         }
         else {

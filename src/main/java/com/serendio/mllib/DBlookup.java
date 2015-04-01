@@ -100,4 +100,15 @@ public class DBlookup
         }
         return fileOutMap;
     }
+    void storeCaseCluster(String jsoncluster,String caseid)
+    {
+        establishDBConnection();
+        try{
+            String query = "update case_ set case_cluster='"+jsoncluster+"' where id="+caseid;
+            m_stmt.executeUpdate(query);
+        }catch(SQLException ex)
+        {
+            ex.printStackTrace();
+        }
+    }
 }
